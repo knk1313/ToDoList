@@ -16,9 +16,39 @@ export default function HomeScreen({ navigation }) {
   const [text, setText] = useState("");
   const [dueAt, setDueAt] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [todos, setTodos] = useState([]);
+  const [todos, setTodos] = useState([
+    {
+      id: "1",
+      title: "ミーティング",
+      createdAt: "2025-10-30T09:00:00.000+09:00",
+      dueAt: "2025-10-30T10:00:00.000+09:00",
+      done: false,
+    },
+    {
+      id: "2",
+      title: "買い物",
+      createdAt: "2025-10-30T09:00:00.000+09:00",
+      dueAt: "2025-10-30T20:00:00.000+09:00",
+      done: false,
+    },
+    {
+      id: "3",
+      title: "課題提出",
+      createdAt: "2025-10-30T09:00:00.000+09:00",
+      dueAt: "2025-11-02T18:00:00.000+09:00",
+      done: false,
+    },
+    {
+      id: "4",
+      title: "ジム",
+      createdAt: "2025-10-30T09:00:00.000+09:00",
+      dueAt: "2025-11-05T19:00:00.000+09:00",
+      done: false,
+    },
+  ]);
   const [searchQuery, setSearchQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(true);
+  const [selectedFilter, setSelectedFilter] = useState("all");
 
   const canAdd = useMemo(
     () => text.trim().length > 0 && dueAt != null,
@@ -68,6 +98,45 @@ export default function HomeScreen({ navigation }) {
   const filteredTodos = useMemo(() => {
     let list = todos;
     if (!showCompleted) list = list.filter((t) => !t.done);
+    const now = new Date();
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate()
+    );
+    const endOfToday = new Date(startOfToday);
+    endOfToday.setDate(endOfToday.getDate() + 1);
+
+    const endOfWeek = new Date(startOfToday);
+    endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+    if (selectedFilter === "today") {
+      const now = new Date();
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      list = list.filter((t) => {
+        if (!t.dueAt) return false;
+        const d = new Date(t.dueAt);
+        return d >= start && d < end;
+      });
+    } else if (selectedFilter === "week") {
+      const localNow = new Date();
+      const startOfLocalDay = new Date(
+        localNow.getFullYear(),
+        localNow.getMonth(),
+        localNow.getDate()
+      );
+      const endOfWeek = new Date(startOfLocalDay);
+      endOfWeek.setDate(endOfWeek.getDate() + 7);
+
+      list = list.filter((t) => {
+        if (!t.dueAt) return false;
+        const d = new Date(t.dueAt);
+        return d >= startOfLocalDay && d < endOfWeek;
+      });
+    }
+
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -82,7 +151,7 @@ export default function HomeScreen({ navigation }) {
       if (a.dueAt && !b.dueAt) return -1;
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [todos, searchQuery, showCompleted]);
+  }, [todos, searchQuery, showCompleted, selectedFilter]);
 
   return (
     <KeyboardAvoidingView
@@ -166,6 +235,28 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.divider} />
 
+        <View style={styles.tabRow}>
+          {["all", "today", "week"].map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.tabButton,
+                selectedFilter === type && styles.tabButtonActive,
+              ]}
+              onPress={() => setSelectedFilter(type)}
+            >
+              <Text
+                style={[
+                  styles.tabButtonText,
+                  selectedFilter === type && styles.tabButtonTextActive,
+                ]}
+              >
+                {type === "all" ? "すべて" : type === "today" ? "今日" : "今週"}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
@@ -225,6 +316,21 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
+  tabRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 16,
+  },
+  tabButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: "#eee",
+  },
+  tabButtonActive: { backgroundColor: "#007AFF" },
+  tabButtonText: { fontSize: 14, color: "#555" },
+  tabButtonTextActive: { color: "#fff", fontWeight: "700" },
+
   searchRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
   searchInput: {
     flex: 1,
@@ -241,13 +347,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   filterButtonText: { fontSize: 12, fontWeight: "600" },
-  separator: { height: 8 },
-  emptyText: {
-    textAlign: "center",
-    color: "#999",
-    marginTop: 40,
-    fontSize: 14,
-  },
 
   input: {
     borderWidth: 1,
