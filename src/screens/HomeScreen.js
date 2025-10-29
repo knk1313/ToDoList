@@ -1,12 +1,13 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMemo, useState } from "react";
 import {
-  Button,
   FlatList,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  Text,
   TextInput,
+  TouchableOpacity,
   View,
 } from "react-native";
 import TodoItem from "../components/TodoItem";
@@ -15,16 +16,14 @@ export default function HomeScreen({ navigation }) {
   const [text, setText] = useState("");
   const [dueAt, setDueAt] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
-  const [todos, setTodos] = useState([
-    {
-      id: String(Date.now()),
-      title: "サンプル",
-      createdAt: new Date().toISOString(),
-      done: false,
-    },
-  ]);
+  const [todos, setTodos] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showCompleted, setShowCompleted] = useState(true);
 
-  const canAdd = useMemo(() => text.trim().length > 0, [text]);
+  const canAdd = useMemo(
+    () => text.trim().length > 0 && dueAt != null,
+    [text, dueAt]
+  );
 
   const addTodo = () => {
     if (!canAdd) return;
@@ -66,6 +65,25 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
+  const filteredTodos = useMemo(() => {
+    let list = todos;
+    if (!showCompleted) list = list.filter((t) => !t.done);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(
+        (t) =>
+          t.title.toLowerCase().includes(q) ||
+          (t.note && t.note.toLowerCase().includes(q))
+      );
+    }
+    return [...list].sort((a, b) => {
+      if (a.dueAt && b.dueAt) return new Date(a.dueAt) - new Date(b.dueAt);
+      if (!a.dueAt && b.dueAt) return 1;
+      if (a.dueAt && !b.dueAt) return -1;
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [todos, searchQuery, showCompleted]);
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
@@ -75,57 +93,114 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.row}>
           <TextInput
             style={styles.input}
-            placeholder="やることを入力"
+            placeholder="予定タイトルを入力"
+            placeholderTextColor="#aaa"
             value={text}
             onChangeText={setText}
             onSubmitEditing={addTodo}
             returnKeyType="done"
           />
-          <Button title="追加" onPress={addTodo} disabled={!canAdd} />
         </View>
 
-        <View style={styles.row}>
-          <Button
-            title={dueAt ? "期限を変更" : "期限を選ぶ"}
-            onPress={() => setShowPicker(true)}
-          />
-          <View style={{ flex: 1 }} />
-          {dueAt ? (
-            <View style={styles.dueBadge}>
-              <View>
-                <Button title="✕ クリア" onPress={() => setDueAt(null)} />
-              </View>
-            </View>
-          ) : null}
-        </View>
+        <TouchableOpacity
+          style={[
+            styles.dueButton,
+            { backgroundColor: dueAt ? "#007AFF" : "#ddd" },
+          ]}
+          onPress={() => setShowPicker(true)}
+        >
+          <Text
+            style={[styles.dueButtonText, { color: dueAt ? "#fff" : "#555" }]}
+          >
+            {dueAt ? "期限を変更" : "期限を選択してください"}
+          </Text>
+        </TouchableOpacity>
 
-        {dueAt ? (
-          <View style={{ marginBottom: 12 }}>
-            <TextInput
-              editable={false}
-              value={`期限: ${dueAt.toLocaleString()}`}
-              style={[styles.input, { color: "#333" }]}
-            />
-          </View>
-        ) : null}
-
-        {showPicker && (
-          <DateTimePicker
-            value={dueAt || new Date()}
-            mode="datetime"
-            display={Platform.OS === "ios" ? "default" : "default"}
-            themeVariant="light"
-            onChange={(event, date) => {
-              if (Platform.OS === "android") setShowPicker(false);
-              if (Platform.OS === "ios") setShowPicker(false);
-              if (date) setDueAt(date);
-            }}
-            onTouchCancel={() => setShowPicker(false)}
-          />
+        {dueAt && (
+          <Text style={styles.dueText}>
+            選択された期限：{dueAt.toLocaleString()}
+          </Text>
         )}
 
+        {showPicker && (
+          <View style={styles.pickerRow}>
+            <View style={styles.pickerContainer}>
+              <DateTimePicker
+                value={dueAt || new Date()}
+                mode="datetime"
+                display="default"
+                themeVariant="light"
+                onChange={(event, date) => {
+                  if (Platform.OS === "android" || Platform.OS === "ios")
+                    setShowPicker(false);
+                  if (date) setDueAt(date);
+                }}
+              />
+            </View>
+            <TouchableOpacity
+              style={styles.resetButton}
+              onPress={() => {
+                setDueAt(null);
+                setShowPicker(false);
+              }}
+            >
+              <Text style={styles.resetText}>リセット</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[
+            styles.addButton,
+            { backgroundColor: canAdd ? "#28A745" : "#ccc" },
+          ]}
+          onPress={addTodo}
+          disabled={!canAdd}
+        >
+          <Text style={styles.addButtonText}>追加</Text>
+        </TouchableOpacity>
+
+        {!dueAt && text.trim().length > 0 && (
+          <Text style={styles.warningText}>期限を選択後、追加できます</Text>
+        )}
+
+        <View style={styles.divider} />
+
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="タイトルやメモで検索"
+            placeholderTextColor="#aaa"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              { backgroundColor: showCompleted ? "#007AFF" : "#ddd" },
+            ]}
+            onPress={() => setShowCompleted(!showCompleted)}
+          >
+            <Text
+              style={[
+                styles.filterButtonText,
+                { color: showCompleted ? "#fff" : "#555" },
+              ]}
+            >
+              {showCompleted ? "完了非表示" : "完了表示"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <FlatList
-          data={todos}
+          data={[...filteredTodos].sort((a, b) => {
+            if (a.dueAt && b.dueAt) {
+              return new Date(a.dueAt) - new Date(b.dueAt);
+            }
+            if (!a.dueAt && b.dueAt) return 1;
+            if (a.dueAt && !b.dueAt) return -1;
+            return new Date(b.createdAt) - new Date(a.createdAt);
+          })}
           keyExtractor={(item) => item.id}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
@@ -135,9 +210,13 @@ export default function HomeScreen({ navigation }) {
               onDelete={() => deleteTodo(item.id)}
               onToggle={() => toggleTodo(item.id)}
               onUpdateDue={updateDueDate}
+              highlight={searchQuery}
             />
           )}
           contentContainerStyle={{ paddingBottom: 24 }}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>まだ予定がありません</Text>
+          }
         />
       </View>
     </KeyboardAvoidingView>
@@ -146,20 +225,94 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
-  row: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  input: {
+  searchRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+  searchInput: {
     flex: 1,
     borderWidth: 1,
     borderColor: "#ccc",
     borderRadius: 8,
     paddingHorizontal: 12,
-    height: 44,
+    height: 40,
+    backgroundColor: "#fff",
   },
-  metaText: { fontSize: 12, color: "#666" },
-  linkBtn: {
-    alignSelf: "flex-start",
-    paddingVertical: 2,
-    paddingHorizontal: 4,
+  filterButton: {
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+  },
+  filterButtonText: { fontSize: 12, fontWeight: "600" },
+  separator: { height: 8 },
+  emptyText: {
+    textAlign: "center",
+    color: "#999",
+    marginTop: 40,
+    fontSize: 14,
+  },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    height: 44,
+    marginBottom: 12,
+  },
+  dueButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  dueButtonText: { fontSize: 14, fontWeight: "600" },
+  dueText: { fontSize: 12, color: "#555", marginBottom: 8 },
+
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
+  pickerContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 8,
+  },
+  resetButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: "#eee",
+    borderRadius: 8,
+  },
+  resetText: { fontSize: 12, color: "#333", fontWeight: "600" },
+
+  addButton: {
+    borderRadius: 8,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  addButtonText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  warningText: {
+    color: "#b00",
+    fontSize: 12,
+    marginTop: 12,
+    marginBottom: 5,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#ccc",
+    marginVertical: 16,
   },
   separator: { height: 8 },
+
+  emptyText: {
+    textAlign: "center",
+    color: "#999",
+    fontSize: 14,
+  },
 });

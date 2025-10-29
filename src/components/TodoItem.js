@@ -3,12 +3,35 @@ import Checkbox from "expo-checkbox";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+function renderHighlighted(text = "", query = "") {
+  if (!query?.trim()) return <Text>{text}</Text>;
+  const q = query.trim();
+  const regex = new RegExp(
+    `(${q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`,
+    "gi"
+  );
+  return (
+    <>
+      {text.split(regex).map((part, i) =>
+        part.toLowerCase() === q.toLowerCase() ? (
+          <Text key={i} style={styles.highlight}>
+            {part}
+          </Text>
+        ) : (
+          <Text key={i}>{part}</Text>
+        )
+      )}
+    </>
+  );
+}
+
 export default function TodoItem({
   item,
   onPress,
   onDelete,
   onToggle,
   onUpdateDue,
+  highlight,
 }) {
   const [showPicker, setShowPicker] = useState(false);
 
@@ -27,7 +50,7 @@ export default function TodoItem({
           ]}
           numberOfLines={1}
         >
-          {item.title}
+          {renderHighlighted(item.title, highlight)}
         </Text>
       </View>
 
@@ -88,6 +111,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: { fontSize: 16, fontWeight: "600", flex: 1 },
+  highlight: { backgroundColor: "yellow" },
 
   metaText: { fontSize: 12, color: "#666" },
 
@@ -96,7 +120,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     paddingHorizontal: 4,
   },
-  linkBtnText: { fontSize: 14, color: "#007aff" },
+  linkBtnText: { fontSize: 12, color: "#007aff" },
 
   pickerContainer: {
     backgroundColor: "#fff",
