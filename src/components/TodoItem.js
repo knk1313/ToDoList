@@ -91,6 +91,16 @@ export default function TodoItem({
           />
         </View>
       )}
+
+      {item.tags?.length > 0 && (
+        <View style={styles.tagRow}>
+          {item.tags.map((tag) => (
+            <Text key={tag} style={styles.tag}>
+              #{tag}
+            </Text>
+          ))}
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -112,6 +122,16 @@ const styles = StyleSheet.create({
   },
   title: { fontSize: 16, fontWeight: "600", flex: 1 },
   highlight: { backgroundColor: "yellow" },
+
+  tagRow: { flexDirection: "row", flexWrap: "wrap", gap: 4 },
+  tag: {
+    backgroundColor: "#eee",
+    color: "#333",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    fontSize: 12,
+  },
 
   metaText: { fontSize: 12, color: "#666" },
 

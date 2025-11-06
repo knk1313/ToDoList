@@ -14,12 +14,22 @@ export default function DetailScreen({ route }) {
 
   const [title, setTitle] = useState(todo.title);
   const [note, setNote] = useState(todo.note || "");
+  const [tagsText, setTagsText] = useState((todo.tags || []).join(", "));
   const [isEditingNote, setIsEditingNote] = useState(false);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [isEditingTags, setIsEditingTags] = useState(false);
 
   const handleSave = () => {
     if (onSave) {
-      onSave({ ...todo, note });
+      onSave({
+        ...todo,
+        title,
+        note,
+        tags: tagsText
+          .split(",")
+          .map((t) => t.trim())
+          .filter(Boolean),
+      });
     }
   };
 
@@ -30,6 +40,11 @@ export default function DetailScreen({ route }) {
 
   const handleBlurNote = () => {
     setIsEditingNote(false);
+    handleSave();
+  };
+
+  const handleBlurTags = () => {
+    setIsEditingTags(false);
     handleSave();
   };
 
@@ -85,6 +100,28 @@ export default function DetailScreen({ route }) {
             </TouchableWithoutFeedback>
           )}
         </View>
+
+        <View style={styles.card}>
+          <Text style={styles.label}>タグ(タップで編集)</Text>
+          {isEditingTags ? (
+            <TextInput
+              style={styles.tagInput}
+              value={tagsText}
+              onChangeText={setTagsText}
+              placeholder="例：仕事,重要(カンマ区切りで入力)"
+              autoFocus
+              onBlur={handleBlurTags}
+            />
+          ) : (
+            <TouchableWithoutFeedback onPress={() => setIsEditingTags(true)}>
+              <View>
+                <Text style={tagsText ? styles.paragraph : styles.placeholder}>
+                  {tagsText || "タグを追加"}
+                </Text>
+              </View>
+            </TouchableWithoutFeedback>
+          )}
+        </View>
       </ScrollView>
     </TouchableWithoutFeedback>
   );
@@ -117,5 +154,14 @@ const styles = StyleSheet.create({
     color: "#aaa",
     fontStyle: "italic",
     marginTop: 8,
+  },
+  tagInput: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    padding: 8,
+    fontSize: 14,
+    height: 36,
+    textAlignVertical: "center",
   },
 });

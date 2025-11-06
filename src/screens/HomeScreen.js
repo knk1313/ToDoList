@@ -1,8 +1,9 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useMemo, useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   Text,
@@ -13,9 +14,27 @@ import {
 import TodoItem from "../components/TodoItem";
 
 export default function HomeScreen({ navigation }) {
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: "ToDo リスト",
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={() => setShowCreate(true)}
+          style={{ paddingHorizontal: 12 }}
+        >
+          <Text style={{ fontSize: 18, fontWeight: "700", color: "#007AFF" }}>
+            ＋
+          </Text>
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation]);
+
   const [text, setText] = useState("");
   const [dueAt, setDueAt] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
+
   const [todos, setTodos] = useState([
     {
       id: "1",
@@ -23,6 +42,7 @@ export default function HomeScreen({ navigation }) {
       createdAt: "2025-10-30T09:00:00.000+09:00",
       dueAt: "2025-10-30T10:00:00.000+09:00",
       done: false,
+      tags: ["仕事", "重要"],
     },
     {
       id: "2",
@@ -30,6 +50,7 @@ export default function HomeScreen({ navigation }) {
       createdAt: "2025-10-30T09:00:00.000+09:00",
       dueAt: "2025-10-30T20:00:00.000+09:00",
       done: false,
+      tags: [],
     },
     {
       id: "3",
@@ -37,6 +58,7 @@ export default function HomeScreen({ navigation }) {
       createdAt: "2025-10-30T09:00:00.000+09:00",
       dueAt: "2025-11-02T18:00:00.000+09:00",
       done: false,
+      tags: ["大学"],
     },
     {
       id: "4",
@@ -44,11 +66,14 @@ export default function HomeScreen({ navigation }) {
       createdAt: "2025-10-30T09:00:00.000+09:00",
       dueAt: "2025-11-05T19:00:00.000+09:00",
       done: false,
+      tags: [],
     },
   ]);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [tags, setTags] = useState("");
 
   const canAdd = useMemo(
     () => text.trim().length > 0 && dueAt != null,
@@ -63,10 +88,15 @@ export default function HomeScreen({ navigation }) {
       createdAt: new Date().toISOString(),
       dueAt: dueAt ? dueAt.toISOString() : null,
       done: false,
+      tags: tags
+        .split(/[、,]/)
+        .map((t) => t.trim())
+        .filter(Boolean),
     };
     setTodos((prev) => [newTodo, ...prev]);
     setText("");
     setDueAt(null);
+    setTags("");
   };
 
   const deleteTodo = (id) => {
@@ -98,17 +128,6 @@ export default function HomeScreen({ navigation }) {
   const filteredTodos = useMemo(() => {
     let list = todos;
     if (!showCompleted) list = list.filter((t) => !t.done);
-    const now = new Date();
-    const startOfToday = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate()
-    );
-    const endOfToday = new Date(startOfToday);
-    endOfToday.setDate(endOfToday.getDate() + 1);
-
-    const endOfWeek = new Date(startOfToday);
-    endOfWeek.setDate(endOfWeek.getDate() + 7);
 
     if (selectedFilter === "today") {
       const now = new Date();
@@ -129,7 +148,6 @@ export default function HomeScreen({ navigation }) {
       );
       const endOfWeek = new Date(startOfLocalDay);
       endOfWeek.setDate(endOfWeek.getDate() + 7);
-
       list = list.filter((t) => {
         if (!t.dueAt) return false;
         const d = new Date(t.dueAt);
@@ -142,9 +160,11 @@ export default function HomeScreen({ navigation }) {
       list = list.filter(
         (t) =>
           t.title.toLowerCase().includes(q) ||
-          (t.note && t.note.toLowerCase().includes(q))
+          (t.note && t.note.toLowerCase().includes(q)) ||
+          t.tags?.some((tag) => tag.toLowerCase().includes(q))
       );
     }
+
     return [...list].sort((a, b) => {
       if (a.dueAt && b.dueAt) return new Date(a.dueAt) - new Date(b.dueAt);
       if (!a.dueAt && b.dueAt) return 1;
@@ -153,87 +173,124 @@ export default function HomeScreen({ navigation }) {
     });
   }, [todos, searchQuery, showCompleted, selectedFilter]);
 
+  const closeCreateModal = () => {
+    setShowPicker(false);
+    setText("");
+    setDueAt(null);
+    setTags("");
+    requestAnimationFrame(() => setShowCreate(false));
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.container}>
-        <View style={styles.row}>
-          <TextInput
-            style={styles.input}
-            placeholder="予定タイトルを入力"
-            placeholderTextColor="#aaa"
-            value={text}
-            onChangeText={setText}
-            onSubmitEditing={addTodo}
-            returnKeyType="done"
-          />
-        </View>
-
-        <TouchableOpacity
-          style={[
-            styles.dueButton,
-            { backgroundColor: dueAt ? "#007AFF" : "#ddd" },
-          ]}
-          onPress={() => setShowPicker(true)}
+        <Modal
+          visible={showCreate}
+          animationType="slide"
+          presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
+          onRequestClose={closeCreateModal}
+          onDismiss={Platform.OS === "ios" ? closeCreateModal : undefined}
         >
-          <Text
-            style={[styles.dueButtonText, { color: dueAt ? "#fff" : "#555" }]}
-          >
-            {dueAt ? "期限を変更" : "期限を選択してください"}
-          </Text>
-        </TouchableOpacity>
-
-        {dueAt && (
-          <Text style={styles.dueText}>
-            選択された期限：{dueAt.toLocaleString()}
-          </Text>
-        )}
-
-        {showPicker && (
-          <View style={styles.pickerRow}>
-            <View style={styles.pickerContainer}>
-              <DateTimePicker
-                value={dueAt || new Date()}
-                mode="datetime"
-                display="default"
-                themeVariant="light"
-                onChange={(event, date) => {
-                  if (Platform.OS === "android" || Platform.OS === "ios")
-                    setShowPicker(false);
-                  if (date) setDueAt(date);
+          <View style={{ flex: 1, backgroundColor: "#f7f7f7" }}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitleCenter}>新規作成</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  if (!canAdd) return;
+                  addTodo();
+                  closeCreateModal();
                 }}
-              />
+                disabled={!canAdd}
+              >
+                <Text
+                  style={[
+                    styles.modalHeaderBtn,
+                    { color: canAdd ? "#007AFF" : "#bbb" },
+                  ]}
+                >
+                  追加
+                </Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={styles.resetButton}
-              onPress={() => {
-                setDueAt(null);
-                setShowPicker(false);
-              }}
-            >
-              <Text style={styles.resetText}>リセット</Text>
-            </TouchableOpacity>
+
+            <View style={{ padding: 16 }}>
+              <TextInput
+                style={styles.input}
+                placeholder="予定タイトルを入力"
+                placeholderTextColor="#aaa"
+                value={text}
+                onChangeText={setText}
+                returnKeyType="done"
+              />
+
+              <TextInput
+                style={styles.input}
+                placeholder="タグを入力（例：仕事,重要）"
+                placeholderTextColor="#aaa"
+                value={tags}
+                onChangeText={setTags}
+              />
+
+              <TouchableOpacity
+                style={[
+                  styles.dueButton,
+                  { backgroundColor: dueAt ? "#007AFF" : "#ddd" },
+                ]}
+                onPress={() => setShowPicker(true)}
+              >
+                <Text
+                  style={[
+                    styles.dueButtonText,
+                    { color: dueAt ? "#fff" : "#555" },
+                  ]}
+                >
+                  {dueAt ? "期限を変更" : "期限を選択してください"}
+                </Text>
+              </TouchableOpacity>
+
+              {dueAt && (
+                <Text style={styles.dueText}>
+                  選択された期限：{dueAt.toLocaleString()}
+                </Text>
+              )}
+
+              {showPicker && (
+                <View style={styles.pickerRow}>
+                  <View style={styles.pickerContainer}>
+                    <DateTimePicker
+                      value={dueAt || new Date()}
+                      mode="datetime"
+                      display="default"
+                      themeVariant="light"
+                      onChange={(event, date) => {
+                        setShowPicker(false);
+                        if (date) setDueAt(date);
+                      }}
+                    />
+                  </View>
+                  <TouchableOpacity
+                    style={styles.resetButton}
+                    onPress={() => {
+                      setDueAt(null);
+                      setShowPicker(false);
+                    }}
+                  >
+                    <Text style={styles.resetText}>リセット</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {!dueAt && text.trim().length > 0 && (
+                <Text style={styles.warningText}>
+                  期限を選択後、追加できます
+                </Text>
+              )}
+            </View>
           </View>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.addButton,
-            { backgroundColor: canAdd ? "#28A745" : "#ccc" },
-          ]}
-          onPress={addTodo}
-          disabled={!canAdd}
-        >
-          <Text style={styles.addButtonText}>追加</Text>
-        </TouchableOpacity>
-
-        {!dueAt && text.trim().length > 0 && (
-          <Text style={styles.warningText}>期限を選択後、追加できます</Text>
-        )}
-
-        <View style={styles.divider} />
+        </Modal>
 
         <View style={styles.tabRow}>
           {["all", "today", "week"].map((type) => (
@@ -260,7 +317,7 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.searchRow}>
           <TextInput
             style={styles.searchInput}
-            placeholder="タイトルやメモで検索"
+            placeholder="タイトルやタグで検索"
             placeholderTextColor="#aaa"
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -284,14 +341,7 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <FlatList
-          data={[...filteredTodos].sort((a, b) => {
-            if (a.dueAt && b.dueAt) {
-              return new Date(a.dueAt) - new Date(b.dueAt);
-            }
-            if (!a.dueAt && b.dueAt) return 1;
-            if (a.dueAt && !b.dueAt) return -1;
-            return new Date(b.createdAt) - new Date(a.createdAt);
-          })}
+          data={filteredTodos}
           keyExtractor={(item) => item.id}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => (
@@ -316,6 +366,26 @@ export default function HomeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
+
+  modalHeader: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    backgroundColor: "#fff",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "#ddd",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    position: "relative",
+  },
+  modalHeaderBtn: { fontSize: 16, fontWeight: "600", color: "#007AFF" },
+  modalTitleCenter: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
   tabRow: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -385,33 +455,19 @@ const styles = StyleSheet.create({
   },
   resetText: { fontSize: 12, color: "#333", fontWeight: "600" },
 
-  addButton: {
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  addButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
   warningText: {
     color: "#b00",
     fontSize: 12,
     marginTop: 12,
     marginBottom: 5,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#ccc",
-    marginVertical: 16,
-  },
-  separator: { height: 8 },
 
+  separator: { height: 8 },
   emptyText: {
     textAlign: "center",
     color: "#999",
     fontSize: 14,
   },
+
+  row: { flexDirection: "row", alignItems: "center", gap: 8 },
 });
