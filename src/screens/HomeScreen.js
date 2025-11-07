@@ -15,6 +15,11 @@ import {
   View,
 } from "react-native";
 import TodoItem from "../components/TodoItem";
+import {
+  cancelTodoNotification,
+  initNotifications,
+  scheduleTodoNotification,
+} from "../screens/notifications";
 
 export default function HomeScreen({ navigation }) {
   const [text, setText] = useState("");
@@ -132,14 +137,19 @@ export default function HomeScreen({ navigation }) {
     }
   }, [todos, showJsonModal]);
 
+  useEffect(() => {
+    initNotifications();
+  }, []);
+
   const canAdd = useMemo(
     () => text.trim().length > 0 && dueAt != null,
     [text, dueAt]
   );
 
-  const addTodo = () => {
+  const addTodo = async () => {
     if (!canAdd) return;
-    const newTodo = {
+
+    const baseTodo = {
       id: String(Date.now()),
       title: text.trim(),
       createdAt: new Date().toISOString(),
@@ -149,7 +159,17 @@ export default function HomeScreen({ navigation }) {
         .split(/[、,]/)
         .map((t) => t.trim())
         .filter(Boolean),
+
+      notificationId: null,
     };
+
+    let notificationId = null;
+    if (baseTodo.dueAt) {
+      notificationId = await scheduleTodoNotification(baseTodo);
+    }
+
+    const newTodo = { ...baseTodo, notificationId };
+
     setTodos((prev) => [newTodo, ...prev]);
     setText("");
     setDueAt(null);
@@ -157,19 +177,57 @@ export default function HomeScreen({ navigation }) {
   };
 
   const deleteTodo = (id) => {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
+    setTodos((prev) => {
+      const target = prev.find((t) => t.id === id);
+      if (target?.notificationId) {
+        cancelTodoNotification(target.notificationId);
+      }
+      return prev.filter((t) => t.id !== id);
+    });
   };
 
   const toggleTodo = (id) => {
     setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, done: !t.done } : t))
+      prev.map((t) => {
+        if (t.id !== id) return t;
+        const newDone = !t.done;
+
+        if (newDone && t.notificationId) {
+          cancelTodoNotification(t.notificationId);
+        }
+
+        return { ...t, done: newDone };
+      })
     );
   };
 
-  const updateDueDate = (id, newDueAt) => {
+  const updateDueDate = async (id, newDueAt) => {
     setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, dueAt: newDueAt } : t))
+      prev.map((t) => {
+        if (t.id === id) {
+          if (t.notificationId) {
+            cancelTodoNotification(t.notificationId);
+          }
+          return { ...t, dueAt: newDueAt, notificationId: null };
+        }
+        return t;
+      })
     );
+
+    const target = todos.find((t) => t.id === id);
+    if (!target) return;
+
+    const updatedTodo = { ...target, dueAt: newDueAt };
+
+    const newNotificationId = await scheduleTodoNotification(updatedTodo);
+
+    if (newNotificationId) {
+      setTodos((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, notificationId: newNotificationId } : t
+        )
+      );
+    }
   };
 
   const openDetail = (item) => {
