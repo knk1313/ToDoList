@@ -1,5 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useLayoutEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
   FlatList,
   KeyboardAvoidingView,
@@ -35,45 +36,48 @@ export default function HomeScreen({ navigation }) {
   const [showPicker, setShowPicker] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
 
-  const [todos, setTodos] = useState([
-    {
-      id: "1",
-      title: "ミーティング",
-      createdAt: "2025-10-30T09:00:00.000+09:00",
-      dueAt: "2025-10-30T10:00:00.000+09:00",
-      done: false,
-      tags: ["仕事", "重要"],
-    },
-    {
-      id: "2",
-      title: "買い物",
-      createdAt: "2025-10-30T09:00:00.000+09:00",
-      dueAt: "2025-10-30T20:00:00.000+09:00",
-      done: false,
-      tags: [],
-    },
-    {
-      id: "3",
-      title: "課題提出",
-      createdAt: "2025-10-30T09:00:00.000+09:00",
-      dueAt: "2025-11-02T18:00:00.000+09:00",
-      done: false,
-      tags: ["大学"],
-    },
-    {
-      id: "4",
-      title: "ジム",
-      createdAt: "2025-10-30T09:00:00.000+09:00",
-      dueAt: "2025-11-05T19:00:00.000+09:00",
-      done: false,
-      tags: [],
-    },
-  ]);
+  const [todos, setTodos] = useState([]);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showCompleted, setShowCompleted] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [tags, setTags] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      const keys = await AsyncStorage.getAllKeys();
+      console.log("AsyncStorage keys:", keys);
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem("todos");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setTodos(parsed);
+          console.log("📦 復元したデータ:", parsed);
+        } else {
+          console.log("📦 保存データなし（初回起動）");
+        }
+      } catch (e) {
+        console.error("📦 読み込み失敗:", e);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        await AsyncStorage.setItem("todos", JSON.stringify(todos));
+        const stored = await AsyncStorage.getItem("todos");
+        console.log("💾 保存済みデータ:", JSON.parse(stored || "[]"));
+      } catch (e) {
+        console.error("💾 保存失敗:", e);
+      }
+    })();
+  }, [todos]);
 
   const canAdd = useMemo(
     () => text.trim().length > 0 && dueAt != null,
