@@ -1,7 +1,9 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   Modal,
@@ -15,22 +17,6 @@ import {
 import TodoItem from "../components/TodoItem";
 
 export default function HomeScreen({ navigation }) {
-  useLayoutEffect(() => {
-    navigation.setOptions({
-      headerTitle: "ToDo リスト",
-      headerRight: () => (
-        <TouchableOpacity
-          onPress={() => setShowCreate(true)}
-          style={{ paddingHorizontal: 12 }}
-        >
-          <Text style={{ fontSize: 18, fontWeight: "700", color: "#007AFF" }}>
-            ＋
-          </Text>
-        </TouchableOpacity>
-      ),
-    });
-  }, [navigation]);
-
   const [text, setText] = useState("");
   const [dueAt, setDueAt] = useState(null);
   const [showPicker, setShowPicker] = useState(false);
@@ -42,6 +28,67 @@ export default function HomeScreen({ navigation }) {
   const [showCompleted, setShowCompleted] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [tags, setTags] = useState("");
+
+  const [showJsonModal, setShowJsonModal] = useState(false);
+  const [jsonText, setJsonText] = useState("");
+
+  const openJsonModal = () => {
+    setShowJsonModal(true);
+  };
+
+  const handleImportJson = () => {
+    try {
+      const parsed = JSON.parse(jsonText);
+
+      if (!Array.isArray(parsed)) {
+        Alert.alert("インポート失敗", "配列形式のJSONではありません。");
+        return;
+      }
+
+      const isValid = parsed.every(
+        (item) => typeof item.id === "string" && typeof item.title === "string"
+      );
+
+      if (!isValid) {
+        Alert.alert(
+          "インポート失敗",
+          "Todoの形式が正しくありません（id と title が必要です）。"
+        );
+        return;
+      }
+
+      setTodos(parsed);
+      setShowJsonModal(false);
+      Alert.alert("インポート完了", "データを読み込みました。");
+    } catch (e) {
+      console.error("JSON parse error:", e);
+      Alert.alert("JSONエラー", "正しいJSON形式ではありません。");
+    }
+  };
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: "ToDo リスト",
+      headerRight: () => (
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <TouchableOpacity
+            onPress={openJsonModal}
+            style={{ paddingHorizontal: 8 }}
+          >
+            <Ionicons name="share-outline" size={22} color="#007AFF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setShowCreate(true)}
+            style={{ paddingHorizontal: 8 }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "700", color: "#007AFF" }}>
+              ＋
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ),
+    });
+  }, [navigation, todos]);
 
   useEffect(() => {
     (async () => {
@@ -57,12 +104,12 @@ export default function HomeScreen({ navigation }) {
         if (stored) {
           const parsed = JSON.parse(stored);
           setTodos(parsed);
-          console.log("📦 復元したデータ:", parsed);
+          console.log("復元したデータ:", parsed);
         } else {
-          console.log("📦 保存データなし（初回起動）");
+          console.log("保存データなし（初回起動）");
         }
       } catch (e) {
-        console.error("📦 読み込み失敗:", e);
+        console.error("読み込み失敗:", e);
       }
     })();
   }, []);
@@ -72,12 +119,18 @@ export default function HomeScreen({ navigation }) {
       try {
         await AsyncStorage.setItem("todos", JSON.stringify(todos));
         const stored = await AsyncStorage.getItem("todos");
-        console.log("💾 保存済みデータ:", JSON.parse(stored || "[]"));
+        console.log("保存済みデータ:", JSON.parse(stored || "[]"));
       } catch (e) {
-        console.error("💾 保存失敗:", e);
+        console.error("保存失敗:", e);
       }
     })();
   }, [todos]);
+
+  useEffect(() => {
+    if (showJsonModal) {
+      setJsonText(JSON.stringify(todos, null, 2));
+    }
+  }, [todos, showJsonModal]);
 
   const canAdd = useMemo(
     () => text.trim().length > 0 && dueAt != null,
@@ -200,7 +253,17 @@ export default function HomeScreen({ navigation }) {
         >
           <View style={{ flex: 1, backgroundColor: "#f7f7f7" }}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitleCenter}>新規作成</Text>
+              <TouchableOpacity
+                onPress={() => closeCreateModal()}
+                style={styles.modalHeaderSide}
+              >
+                <Text style={styles.modalHeaderBtn}>キャンセル</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.modalTitleCenter} pointerEvents="none">
+                新規作成
+              </Text>
+
               <TouchableOpacity
                 onPress={() => {
                   if (!canAdd) return;
@@ -208,11 +271,12 @@ export default function HomeScreen({ navigation }) {
                   closeCreateModal();
                 }}
                 disabled={!canAdd}
+                style={styles.modalHeaderSide}
               >
                 <Text
                   style={[
                     styles.modalHeaderBtn,
-                    { color: canAdd ? "#007AFF" : "#bbb" },
+                    { color: canAdd ? "#007AFF" : "#bbb", marginLeft: 30 },
                   ]}
                 >
                   追加
@@ -292,6 +356,61 @@ export default function HomeScreen({ navigation }) {
                   期限を選択後、追加できます
                 </Text>
               )}
+            </View>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={showJsonModal}
+          animationType="slide"
+          presentationStyle={Platform.OS === "ios" ? "pageSheet" : "fullScreen"}
+          onRequestClose={() => setShowJsonModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: "#f7f7f7" }}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                onPress={() => setShowJsonModal(false)}
+                style={styles.modalHeaderSide}
+              >
+                <Text style={styles.modalHeaderBtn}>キャンセル</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.modalTitleCenter} pointerEvents="none">
+                JSON形式で共有
+              </Text>
+
+              <TouchableOpacity
+                onPress={handleImportJson}
+                style={styles.modalHeaderSide}
+              >
+                <Text style={styles.modalHeaderBtn}>インポート</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={{ padding: 16, flex: 1 }}>
+              <Text style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>
+                現在のデータが JSON
+                形式で表示されています。コピーして保存できます。
+                復元したいときはここに JSON
+                を貼り付けて「インポート」を押してください。
+              </Text>
+              <TextInput
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderRadius: 8,
+                  padding: 8,
+                  fontSize: 12,
+                  textAlignVertical: "top",
+                  backgroundColor: "#fff",
+                }}
+                multiline
+                value={jsonText}
+                onChangeText={setJsonText}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
             </View>
           </View>
         </Modal>
@@ -382,9 +501,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     position: "relative",
   },
+
+  modalHeaderSide: {
+    minWidth: 70,
+  },
   modalHeaderBtn: { fontSize: 16, fontWeight: "600", color: "#007AFF" },
   modalTitleCenter: {
-    flex: 1,
+    position: "absolute",
+    left: 0,
+    right: 0,
     textAlign: "center",
     fontSize: 16,
     fontWeight: "700",
