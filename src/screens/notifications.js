@@ -46,9 +46,9 @@ export async function scheduleTodoNotification(todo) {
   let triggerDate = new Date(dueDate.getTime() - aheadMs);
   const now = new Date();
 
-  if (triggerDate <= now) {
-    triggerDate = new Date(now.getTime() + 5000);
-  }
+  //if (triggerDate <= now) {
+  //  triggerDate = new Date(now.getTime() + 5000);
+  //}
 
   try {
     const id = await Notifications.scheduleNotificationAsync({

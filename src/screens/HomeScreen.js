@@ -391,9 +391,17 @@ export default function HomeScreen({ navigation }) {
                       mode="datetime"
                       display="default"
                       themeVariant="light"
-                      onChange={(event, date) => {
-                        setShowPicker(false);
-                        if (date) setDueAt(date);
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS === "android") {
+                          if (event.type === "set" && selectedDate) {
+                            setDueAt(selectedDate);
+                          }
+                          setShowPicker(false);
+                        } else {
+                          if (selectedDate) {
+                            setDueAt(selectedDate);
+                          }
+                        }
                       }}
                     />
                   </View>

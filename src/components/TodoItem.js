@@ -82,10 +82,20 @@ export default function TodoItem({
             mode="datetime"
             display="default"
             themeVariant="light"
-            onChange={(event, date) => {
-              setShowPicker(false);
-              if (date && typeof onUpdateDue === "function") {
-                onUpdateDue(item.id, date.toISOString());
+            onChange={(event, selectedDate) => {
+              if (Platform.OS === "android") {
+                if (
+                  event.type === "set" &&
+                  selectedDate &&
+                  typeof onUpdateDue === "function"
+                ) {
+                  onUpdateDue(item.id, selectedDate.toISOString());
+                }
+                setShowPicker(false);
+              } else {
+                if (selectedDate && typeof onUpdateDue === "function") {
+                  onUpdateDue(item.id, selectedDate.toISOString());
+                }
               }
             }}
           />
