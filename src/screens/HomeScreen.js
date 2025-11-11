@@ -384,36 +384,53 @@ export default function HomeScreen({ navigation }) {
               )}
 
               {showPicker && (
-                <View style={styles.pickerRow}>
-                  <View style={styles.pickerContainer}>
-                    <DateTimePicker
-                      value={dueAt || new Date()}
-                      mode="datetime"
-                      display="default"
-                      themeVariant="light"
-                      onChange={(event, selectedDate) => {
-                        if (Platform.OS === "android") {
-                          if (event.type === "set" && selectedDate) {
-                            setDueAt(selectedDate);
+                <View>
+                  <View style={styles.pickerRow}>
+                    <View style={styles.pickerContainer}>
+                      <DateTimePicker
+                        value={dueAt || new Date()}
+                        mode="datetime"
+                        display="default"
+                        themeVariant="light"
+                        onChange={(event, selectedDate) => {
+                          if (Platform.OS === "android") {
+                            if (event.type === "set" && selectedDate) {
+                              setDueAt(selectedDate);
+                            }
+                            setShowPicker(false);
+                          } else {
+                            if (selectedDate) {
+                              setDueAt(selectedDate);
+                            }
                           }
-                          setShowPicker(false);
-                        } else {
-                          if (selectedDate) {
-                            setDueAt(selectedDate);
-                          }
-                        }
-                      }}
-                    />
+                        }}
+                      />
+                    </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.resetButton}
-                    onPress={() => {
-                      setDueAt(null);
-                      setShowPicker(false);
-                    }}
-                  >
-                    <Text style={styles.resetText}>リセット</Text>
-                  </TouchableOpacity>
+
+                  {Platform.OS === "ios" && (
+                    <View style={styles.iosButtonRow}>
+                      <TouchableOpacity
+                        style={[styles.iosButton, { backgroundColor: "#ddd" }]}
+                        onPress={() => {
+                          // 変更を反映せず閉じるだけ
+                          setShowPicker(false);
+                        }}
+                      >
+                        <Text style={styles.iosCancelText}>キャンセル</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[
+                          styles.iosButton,
+                          { backgroundColor: "#007AFF" },
+                        ]}
+                        onPress={() => setShowPicker(false)}
+                      >
+                        <Text style={styles.iosDoneText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               )}
 
@@ -636,19 +653,26 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
   },
+  iosInlineButtons: {
+    flexDirection: "row",
+    gap: 6,
+  },
   pickerContainer: {
     flex: 1,
     backgroundColor: "#fff",
     borderRadius: 8,
     padding: 8,
   },
-  resetButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    backgroundColor: "#eee",
-    borderRadius: 8,
+  iosCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
   },
-  resetText: { fontSize: 12, color: "#333", fontWeight: "600" },
+  iosDoneText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff",
+  },
 
   warningText: {
     color: "#b00",
@@ -665,4 +689,30 @@ const styles = StyleSheet.create({
   },
 
   row: { flexDirection: "row", alignItems: "center", gap: 8 },
+
+  doneButton: {
+    alignSelf: "flex-end",
+    marginTop: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#007AFF",
+  },
+  doneText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  iosButtonRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 8,
+    marginTop: 8,
+  },
+  iosButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
 });

@@ -1,7 +1,14 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Checkbox from "expo-checkbox";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 function renderHighlighted(text = "", query = "") {
   if (!query?.trim()) return <Text>{text}</Text>;
@@ -60,6 +67,48 @@ export default function TodoItem({
         </Text>
       </Pressable>
 
+      {showPicker && (
+        <View style={[styles.pickerContainer, styles.pickerRow]}>
+          <View style={{ flex: 1 }}>
+            <DateTimePicker
+              value={item.dueAt ? new Date(item.dueAt) : new Date()}
+              mode="datetime"
+              display="default"
+              themeVariant="light"
+              onChange={(event, selectedDate) => {
+                if (Platform.OS === "android") {
+                  if (
+                    event.type === "set" &&
+                    selectedDate &&
+                    typeof onUpdateDue === "function"
+                  ) {
+                    onUpdateDue(item.id, selectedDate.toISOString());
+                  }
+                  setShowPicker(false);
+                } else {
+                  if (
+                    event.type === "set" &&
+                    selectedDate &&
+                    typeof onUpdateDue === "function"
+                  ) {
+                    onUpdateDue(item.id, selectedDate.toISOString());
+                  }
+                }
+              }}
+            />
+          </View>
+
+          {Platform.OS === "ios" && (
+            <TouchableOpacity
+              style={styles.doneButton}
+              onPress={() => setShowPicker(false)}
+            >
+              <Text style={styles.doneText}>Done</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
       {item.dueAt ? (
         <Text
           style={[
@@ -75,33 +124,6 @@ export default function TodoItem({
         作成: {new Date(item.createdAt).toLocaleString()}
       </Text>
 
-      {showPicker && (
-        <View style={styles.pickerContainer}>
-          <DateTimePicker
-            value={item.dueAt ? new Date(item.dueAt) : new Date()}
-            mode="datetime"
-            display="default"
-            themeVariant="light"
-            onChange={(event, selectedDate) => {
-              if (Platform.OS === "android") {
-                if (
-                  event.type === "set" &&
-                  selectedDate &&
-                  typeof onUpdateDue === "function"
-                ) {
-                  onUpdateDue(item.id, selectedDate.toISOString());
-                }
-                setShowPicker(false);
-              } else {
-                if (selectedDate && typeof onUpdateDue === "function") {
-                  onUpdateDue(item.id, selectedDate.toISOString());
-                }
-              }
-            }}
-          />
-        </View>
-      )}
-
       {item.tags?.length > 0 && (
         <View style={styles.tagRow}>
           {item.tags.map((tag) => (
@@ -111,6 +133,8 @@ export default function TodoItem({
           ))}
         </View>
       )}
+
+      <Text style={styles.deleteHint}>※ 長押しで削除できます</Text>
     </Pressable>
   );
 }
@@ -145,6 +169,13 @@ const styles = StyleSheet.create({
 
   metaText: { fontSize: 12, color: "#666" },
 
+  deleteHint: {
+    fontSize: 10,
+    color: "#aaa",
+    marginTop: 4,
+    textAlign: "left",
+  },
+
   linkBtn: {
     alignSelf: "flex-start",
     paddingVertical: 2,
@@ -157,5 +188,23 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
     marginTop: 4,
+  },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  doneButton: {
+    marginLeft: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: "#007AFF",
+  },
+  doneText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
 });
