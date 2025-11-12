@@ -1,50 +1,43 @@
-# Welcome to your Expo app 👋
+# ToDoList 管理アプリ
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## 概要
 
-## Get started
+このアプリは、主に React Native と Expo で開発されたシンプルな ToDo 管理アプリです。このアプリは、期限付きタスク・タグ・メモ管理を主機能とし、AsyncStorage によるローカルでの永続化や期限前通知、JSON 形式でのインポート・エクスポート機能も備え付けてます。
 
-1. Install dependencies
+## 主な機能
 
-   ```bash
-   npm install
-   ```
+| 機能             | 内容                                                     |
+| ---------------- | -------------------------------------------------------- |
+| タスク追加・削除 | モーダルで新規作成、長押しで削除                         |
+| 期限設定         | タスク期限の日付・時間を設定                             |
+| 通知機能         | 期限の 10 分前に通知                                     |
+| 永続化           | AsyncStorage に全タスクを JSON 保存                      |
+| タグ管理         | カンマ区切りで複数タグ登録可能                           |
+| フィルタ         | 「すべて / 今日 / 今週」や完了タスクの表示切替           |
+| 検索             | タイトル・メモ・タグを対象に検索可能                     |
+| 詳細編集         | タスクをタップすると詳細画面でタイトル・メモ・タグ編集可 |
+| JSON 共有        | 一括エクスポート／インポート対応                         |
 
-2. Start the app
+## データ構造(例)
 
-   ```bash
-   npx expo start
-   ```
+{
+"id": "1731417338563",
+"title": "ミーティング",
+"note": "資料作成と確認必須",
+"tags": ["仕事", "重要"],
+"createdAt": "2025-11-12T10:15:00.000Z",
+"dueAt": "2025-11-13T09:00:00.000Z",
+"done": false,
+"notificationId": "abc123"
+}
 
-In the output, you'll find options to open the app in a
+## 今後の拡張案
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+・PWA 対応
+・クラウド同期
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 開発環境
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Node.js v24.10.0
+npm 11.6.2
+Expo SDK 54
